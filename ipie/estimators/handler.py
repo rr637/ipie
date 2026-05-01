@@ -21,7 +21,6 @@ from __future__ import print_function
 import sys
 sys.path.append("../../../")
 
-from tracking import RunTracker
 import os
 from typing import Tuple, Union
 
@@ -212,7 +211,7 @@ class EstimatorHandler(object):
             end = start + int(self[k].size)
             self.local_estimates[start:end] += e.data
 
-    def print_block(self, comm, block, walker_factors, div_factor=None, tracker: RunTracker=None, kernel_name='AFQMC'):
+    def print_block(self, comm, block, walker_factors):
         self.local_estimates[: walker_factors.size] = walker_factors.buffer
         # print(f"rank {comm.rank} about to barrier", flush=True)
         # comm.Barrier()  ## NEEDED THIS FOR SOME REASON, HANGS OTHERWISE
@@ -237,12 +236,6 @@ class EstimatorHandler(object):
                 if e.print_to_stdout:
                     output_string += est_string
         
-                if k.lower() in {"energy"}:
-                    if tracker is not None:
-                        tracker.AFQMC_store_intermediate(est_data)
-                        converged, _ = tracker.check_convergence(kernel_name=kernel_name)
-                        if converged:
-                            local_conv = True
         if comm.rank == 0:
             shift = self.global_estimates[walker_factors.get_index("HybridEnergy")]
         else:

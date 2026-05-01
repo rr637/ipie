@@ -17,7 +17,6 @@
 
 from typing import Union
 import numpy as np
-import wandb
 import plum
 
 from ipie.estimators.estimator_base import EstimatorBase
