@@ -35,8 +35,7 @@ def make_splits_displacements(ntotal, nsplit):
 
 
 class MPIHandler(object):
-    def __init__(self, nmembers: int = 1, verbose: bool = False):
-        comm = MPI.COMM_WORLD
+    def __init__(self, comm=MPI.COMM_WORLD,nmembers: int = 1, verbose: bool = False):
         self.comm = comm
         self.shared_comm = get_shared_comm(comm)  # global communicator
         self.size = comm.Get_size()

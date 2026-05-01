@@ -64,6 +64,7 @@ class ParticleHole(TrialWavefunctionBase):
         self._num_det_chunks = num_det_chunks
         self.ortho_expansion = True
         self.build()
+        self.energy = None
 
     def setup_basic_wavefunction(self, wfn, num_dets=None, use_active_space=True):
         """Unpack wavefunction and insert melting core orbitals."""
@@ -405,16 +406,16 @@ class ParticleHole(TrialWavefunctionBase):
         self.half_rotated = True
 
     def calculate_energy(self, system, hamiltonian):
-        if self.verbose:
-            print("# Computing trial wavefunction energy.")
+
         # Cannot use usual energy evaluation routines if trial is orthogonal.
-        self.energy, self.e1b, self.e2b = variational_energy_ortho_det(
-            system, hamiltonian, self.spin_occs, self.coeffs
-        )
-        if self.verbose:
-            print(f"# Variational energy of trial wavefunction: {self.energy.real}")
-            if abs(self.energy.imag) > 1e-10:
-                print(f"# Warning imaginary part of trial energy is not zero: {self.energy.imag}")
+        if self.energy is None:
+            self.energy, self.e1b, self.e2b = variational_energy_ortho_det(
+                system, hamiltonian, self.spin_occs, self.coeffs
+            )
+            if self.verbose:
+                print(f"# Variational energy of trial wavefunction: {self.energy.real}")
+                if abs(self.energy.imag) > 1e-10:
+                    print(f"# Warning imaginary part of trial energy is not zero: {self.energy.imag}")
         return self.energy, self.e1b, self.e2b
 
     def build_one_rdm(self):

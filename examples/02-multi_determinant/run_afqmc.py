@@ -30,28 +30,28 @@ from ipie.config import config
 config.update_option("use_gpu", False)  # disable GPU
 
 comm_size = comm.size if comm is not None else 1
-num_walkers = 640 // comm_size
+num_walkers = 1280 // comm_size
 
 
 if comm is None or comm.rank == 0:
-    nocca = 4
-    noccb = 2
+    nocca = 1
+    noccb = 1
 
     mol = gto.M(
-        atom=[("N", 0, 0, 0), ("N", (0, 0, 3.0))],
+        atom=[("H", 0, 0, 0), ("H", (0, 0, 0.74))],
         basis="ccpvdz",
         verbose=3,
         spin=nocca - noccb,
-        unit="Bohr",
     )
     mf = scf.RHF(mol)
     mf.chkfile = "scf.chk"
     ehf = mf.kernel()
-    M = 6
-    N = 6
+    M = 2
+    N = 2
     mc = mcscf.CASSCF(mf, M, N)
     mc.chkfile = "scf.chk"
     e_tot, e_cas, fcivec, mo, mo_energy = mc.kernel()
+    print("CASSCF Energy: ",e_tot)
     coeff, occa, occb = zip(
         *fci.addons.large_ci(fcivec, M, (nocca, noccb), tol=1e-8, return_strs=False)
     )
@@ -63,7 +63,7 @@ if comm is None or comm.rank == 0:
 
     gen_ipie_input_from_pyscf_chk("scf.chk", mcscf=True)
 
-mol_nelec = [8, 6]
+mol_nelec = [1, 1]
 
 with h5py.File("hamiltonian.h5") as fa:
     chol = fa["LXmn"][()]

@@ -284,9 +284,13 @@ class UHFWalkersParticleHole(UHFWalkers):
             trial._rchola = xp.asarray(trial._rchola)
             trial._rcholb = xp.asarray(trial._rcholb)
             trial._rchola_act = xp.asarray(trial._rchola_act)
+      
 
         self.ovlp = trial.calc_greens_function(self)
+    
+        
 
+        
 
 class UHFWalkersNOCI(UHFWalkers):
     """UHF style walker specialized for its use with NOCI trial.

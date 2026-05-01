@@ -615,7 +615,8 @@ def compute_determinants_batched(G0a, G0b, trial):
     dets_b_full = xp.ones((nwalker, ndets), dtype=numpy.complex128)
     # Use low level excitation optimizations
     # TODO: Optimization Use one buffer + one remapping at the end.
-
+    # debug prints
+   
     dets_a, dets_b = get_dets_single_excitation_batched_opt(G0a, G0b, trial)
     dets_a_full[:, trial.excit_map_a[1]] = dets_a
     dets_b_full[:, trial.excit_map_b[1]] = dets_b

@@ -168,6 +168,12 @@ class AFQMCBase(metaclass=abc.ABCMeta):
         npcon = max(nsteps // self.params.pop_control_freq, 1)
         if self.mpi_handler.rank == 0:
             if verbose:
+                print(f"# Number of Steps per block:", self.params.num_steps_per_block)
+                print(f"# Number of Walkers per Thread:", self.params.num_walkers)
+                print(f"# Number of Total", self.params.total_num_walkers)
+                print(f"# Dt:", self.params.timestep)
+                print(f"# Stabilizer frequency (steps)", self.params.num_stblz)
+                print(f"# Populatin control frequency (steps):", self.params.pop_control_freq)
                 print(f"# End Time: {time.asctime():s}")
                 print(f"# Running time : {time.time() - self._init_time:.6f} seconds")
                 print("# Timing breakdown (per call, total calls per block, total blocks):")

@@ -1198,6 +1198,7 @@ def greens_function_multi_det_wicks_opt(walker_batch, trial, build_full=False):
     walker_batch.Q0b = numpy.eye(nbasis)[None, :] - G0b
     walker_batch.CIa.fill(0.0 + 0.0j)
     walker_batch.CIb.fill(0.0 + 0.0j)
+
     dets_a_full, dets_b_full = compute_determinants_batched(
         walker_batch.Ghalfa, walker_batch.Ghalfb, trial
     )
@@ -1206,6 +1207,7 @@ def greens_function_multi_det_wicks_opt(walker_batch, trial, build_full=False):
     walker_batch.det_ovlpbs = dets_b_full * trial.phase_b[None, :]  # phase included
     ovlpa = walker_batch.det_ovlpas
     ovlpb = walker_batch.det_ovlpbs
+
 
     c_phasea_ovlpb = numpy.einsum(
         "wJ,J->wJ", ovlpb, trial.phase_a * trial.coeffs.conj(), optimize=True

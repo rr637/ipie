@@ -16,7 +16,8 @@
 #
 
 from typing import Union
-
+import numpy as np
+import wandb
 import plum
 
 from ipie.estimators.estimator_base import EstimatorBase
@@ -200,6 +201,14 @@ class EnergyEstimator(EstimatorBase):
             "ETotal": 0.0j,
             "E1Body": 0.0j,
             "E2Body": 0.0j,
+            "ENumer_WalkerVar": 0.0j,
+            "E1Body_WalkerVar": 0.0j,
+            "E2Body_WalkerVar": 0.0j,
+            "ENumer_WalkerSTD": 0.0j,
+            "E1Body_WalkerSTD": 0.0j,
+            "E2Body_WalkerSTD": 0.0j,
+            "ETotal_WalkerVar": 0.0j,
+            "ETotal_WalkerSTD": 0.0j,
         }
         self._shape = (len(self.names),)
         self._data_index = {k: i for i, k in enumerate(list(self._data.keys()))}
@@ -209,7 +218,43 @@ class EnergyEstimator(EstimatorBase):
     def compute_estimator(self, system=None, walkers=None, hamiltonian=None, trial=None):
         trial.calc_greens_function(walkers)
         # Need to be able to dispatch here
-        energy = local_energy(system, hamiltonian, walkers, trial)
+        energy = local_energy(system, hamiltonian, walkers, trial)  # [N_walkers, 3]
+        this_E_var = np.var(energy.real, axis=0)  # take variance along num_walkers
+        this_E_std = np.std(energy.real, axis=0)
+
+        # stats wrt walkers
+        self._data["ENumer_WalkerVar"] = float(this_E_var[0])
+        self._data["E1Body_WalkerVar"] = float(this_E_var[1])
+        self._data["E2Body_WalkerVar"] = float(this_E_var[2])
+        self._data["ENumer_WalkerSTD"] = float(this_E_std[0])
+        self._data["E1Body_WalkerSTD"] = float(this_E_std[1])
+        self._data["E2Body_WalkerSTD"] = float(this_E_std[2])
+
+        E_numer = self._data["ENumer"]            # = sum_i w_i E_i
+        w_sum   = np.sum(walkers.weight)         # = sum_i w_i
+
+        # Build the samples for X and Y:
+        X = walkers.weight * energy[:,0].real     # shape (N,)
+        Y = walkers.weight                        # shape (N,)
+
+        # sample means (just to be explicit):
+        X_mean = E_numer
+        Y_mean = w_sum
+
+        # sample variances & covariance (unbiased, ddof=1):
+        var_X   = np.var(X, ddof=1)
+        var_Y   = np.var(Y, ddof=1)
+        cov_XY  = np.cov(X, Y, ddof=1)[0,1]
+
+        # atio variance:
+        var_etot = ( var_X / Y_mean**2
+                + X_mean**2 * var_Y / Y_mean**4
+                - 2* X_mean * cov_XY / Y_mean**3 )
+        std_etot = np.sqrt(var_etot)
+
+        self._data["ETotal_WalkerVar"] = float(np.real(var_etot))
+        self._data["ETotal_WalkerSTD"] = float(np.real(std_etot))
+
         self._data["ENumer"] = xp.sum(walkers.weight * energy[:, 0].real)
         self._data["EDenom"] = xp.sum(walkers.weight)
         self._data["E1Body"] = xp.sum(walkers.weight * energy[:, 1].real)
@@ -224,11 +269,14 @@ class EnergyEstimator(EstimatorBase):
         return index
 
     def post_reduce_hook(self, data):
-        ix_proj = self._data_index["ETotal"]
+        # get indices from reverse mapping list
+        ix_total = self._data_index["ETotal"]
         ix_nume = self._data_index["ENumer"]
         ix_deno = self._data_index["EDenom"]
-        data[ix_proj] = data[ix_nume] / data[ix_deno]
-        ix_nume = self._data_index["E1Body"]
-        data[ix_nume] = data[ix_nume] / data[ix_deno]
-        ix_nume = self._data_index["E2Body"]
-        data[ix_nume] = data[ix_nume] / data[ix_deno]
+
+        # normalize over total walker weight
+        data[ix_total] = data[ix_nume] / data[ix_deno]  # norm ETotal
+        ix_E1_nume = self._data_index["E1Body"]
+        data[ix_E1_nume] = data[ix_E1_nume] / data[ix_deno]  # norm E1Body
+        ix_E2_nume = self._data_index["E2Body"]
+        data[ix_E2_nume] = data[ix_E2_nume] / data[ix_deno]  # norm E2Body

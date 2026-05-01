@@ -15,7 +15,6 @@
 # Authors: Joonho Lee <linusjoonho@gmail.com>
 #          Fionn Malone <fionn.malone@gmail.com>
 #
-
 import numpy
 import pandas as pd
 

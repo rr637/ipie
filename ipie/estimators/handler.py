@@ -15,11 +15,13 @@
 # Authors: Fionn Malone <fmalone@google.com>
 #          Joonho Lee
 #
-
-"""Routines and classes for estimation of observables."""
-
 from __future__ import print_function
 
+"""Routines and classes for estimation of observables."""
+import sys
+sys.path.append("../../../")
+
+from tracking import RunTracker
 import os
 from typing import Tuple, Union
 
@@ -31,6 +33,8 @@ from ipie.estimators.energy import EnergyEstimator
 from ipie.estimators.estimator_base import EstimatorBase
 from ipie.estimators.utils import H5EstimatorHelper
 from ipie.utils.io import format_fixed_width_strings
+
+# config.update_option('use_gpu', True)
 
 # Some supported (non-custom) estimators
 _predefined_estimators = {
@@ -208,8 +212,11 @@ class EstimatorHandler(object):
             end = start + int(self[k].size)
             self.local_estimates[start:end] += e.data
 
-    def print_block(self, comm, block, walker_factors, div_factor=None):
+    def print_block(self, comm, block, walker_factors, div_factor=None, tracker: RunTracker=None, kernel_name='AFQMC'):
         self.local_estimates[: walker_factors.size] = walker_factors.buffer
+        # print(f"rank {comm.rank} about to barrier", flush=True)
+        # comm.Barrier()  ## NEEDED THIS FOR SOME REASON, HANGS OTHERWISE
+        # print(f"rank {comm.rank} passed barrier", flush=True)
         comm.Reduce(self.local_estimates, self.global_estimates, op=MPI.SUM)
         output_string = " "
         # Get walker data.
@@ -218,6 +225,7 @@ class EstimatorHandler(object):
             walker_factors.post_reduce_hook(self.global_estimates[:offset], block)
         output_string += walker_factors.to_text(self.global_estimates[:offset])
         output_string += " "
+        local_conv = False
         for k, e in self.items():
             if comm.rank == 0:
                 start = offset + self.get_offset(k)
@@ -228,18 +236,26 @@ class EstimatorHandler(object):
                 e.to_ascii_file(est_string)
                 if e.print_to_stdout:
                     output_string += est_string
+        
+                if k.lower() in {"energy"}:
+                    if tracker is not None:
+                        tracker.AFQMC_store_intermediate(est_data)
+                        converged, _ = tracker.check_convergence(kernel_name=kernel_name)
+                        if converged:
+                            local_conv = True
         if comm.rank == 0:
             shift = self.global_estimates[walker_factors.get_index("HybridEnergy")]
-
         else:
             shift = None
         walker_factors.eshift = comm.bcast(shift)
+        global_converged = comm.bcast(local_conv, root=0)
         if comm.rank == 0:
             self.output.push_to_chunk(self.global_estimates, f"data")
             self.output.increment()
         if comm.rank == 0:
             print(f"{block:>17d} " + output_string)
         self.zero()
+        return global_converged
 
     def zero(self):
         self.local_estimates[:] = 0.0

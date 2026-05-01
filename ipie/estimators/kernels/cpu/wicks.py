@@ -51,11 +51,17 @@ def get_dets_singles(cre, anh, mapping, offset, G0, dets):
     -------
     None
     """
+    
     qs = anh[:, 0] + offset
+    
     ndets = qs.shape[0]
+
     for idet in range(ndets):
+    
         p = mapping[cre[idet, 0]] + offset
+     
         dets[:, idet] = G0[:, p, qs[idet]]
+      
 
 
 @jit(nopython=True, fastmath=True)
